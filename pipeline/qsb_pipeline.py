@@ -38,6 +38,7 @@ from itertools import combinations
 # Local imports
 from secp256k1 import (
     sha256d, ripemd160, hash160,
+    ripemd160_compressed_pubkey,
     compress_pubkey, decompress_pubkey, point_mul, point_add, G, N, P,
     ecdsa_sign, ecdsa_sign_with_k, ecdsa_recover, ecdsa_verify,
     encode_der_sig, is_valid_der_sig, modinv, int_to_der_int,
@@ -578,7 +579,7 @@ def cmd_assemble(args):
         pt = ecdsa_recover(pin_r, pin_s, z_pin, flag)
         if pt:
             kn = compress_pubkey(pt)
-            sp = ripemd160(hashlib.sha256(kn).digest())
+            sp = ripemd160_compressed_pubkey(kn)
             real_der = is_valid_der_sig(sp)
             easy_der = (sp[0] >> 4) == 3
             if real_der or easy_der:
@@ -656,7 +657,7 @@ def cmd_assemble(args):
             pt = ecdsa_recover(r_val, s_val, z_round, flag)
             if pt:
                 kn = compress_pubkey(pt)
-                sp = ripemd160(hashlib.sha256(kn).digest())
+                sp = ripemd160_compressed_pubkey(kn)
                 real_der = is_valid_der_sig(sp)
                 easy_der = (sp[0] >> 4) == 3
                 if real_der or easy_der:
@@ -872,7 +873,7 @@ def cmd_test(args):
         
         Q = point_add(point_mul(u1, G), point_mul(u2, R_pt))
         pubkey_bytes = compress_pubkey(Q)
-        h160 = ripemd160(hashlib.sha256(pubkey_bytes).digest())
+        h160 = ripemd160_compressed_pubkey(pubkey_bytes)
         
         # Easy check for test speed (real search uses GPU with full DER)
         if is_valid_der_sig(h160) or (h160[0] >> 4) == 3:
@@ -927,7 +928,7 @@ def cmd_test(args):
             u2 = (s_val * d_r_inv) % N
             Q = point_add(point_mul(u1, G), point_mul(u2, dR))
             pk = compress_pubkey(Q)
-            h160 = ripemd160(hashlib.sha256(pk).digest())
+            h160 = ripemd160_compressed_pubkey(pk)
             
             if is_valid_der_sig(h160) or (h160[0] >> 4) == 3:
                 found_combo = list(combo)
