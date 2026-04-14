@@ -271,7 +271,7 @@ __global__ void kernel_digest_allgpu(
     _ModMult(qx,zz);_ModMult(qy,zzz);
 
     uint8_t h160[20];
-    _GetHash160Comp(qx,(uint8_t)(qy[0]&1),h160);
+    _GetRIPEMD160CompPubKey(qx,(uint8_t)(qy[0]&1),h160);
 
     int v = easy_mode ? gpu_is_der_easy(h160,20) : gpu_is_valid_der(h160,20);
     if (v) {

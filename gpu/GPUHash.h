@@ -639,6 +639,8 @@ __device__ void _FindComboStart(int8_t * inputComboGPU, int8_t * combo) {
 // RIPEMD160
 // ---------------------------------------------------------------------------------
 __device__ __constant__ uint64_t ripemd160_sizedesc_32 = 32 << 3;
+__device__ __constant__ uint64_t ripemd160_sizedesc_33 = 33 << 3;
+__device__ __constant__ uint64_t ripemd160_sizedesc_20 = 20 << 3;
 
 __device__ void _RIPEMD160Initialize(uint32_t s[5])
 {
@@ -855,45 +857,37 @@ __device__ void _RIPEMD160Transform(uint32_t s[5], uint32_t* w)
 	s[4] = t + b1 + c2;
 }
 
-__device__ __noinline__ void _GetHash160Comp(uint64_t* x, uint8_t isOdd, uint8_t* hash)
+__device__ __noinline__ void _GetRIPEMD160CompPubKey(uint64_t* x, uint8_t isOdd, uint8_t* hash)
 {
 
 	uint32_t* x32 = (uint32_t*)(x);
-	uint32_t publicKeyBytes[16];
-	uint32_t s[16];
+	uint32_t w[16];
+	for (int i = 0; i < 16; i++) w[i] = 0;
+	uint8_t* wb = (uint8_t*)w;
 
-	// Compressed public key
-	publicKeyBytes[0] = __byte_perm(x32[7], 0x2 + isOdd, 0x4321);
-	publicKeyBytes[1] = __byte_perm(x32[7], x32[6], 0x0765);
-	publicKeyBytes[2] = __byte_perm(x32[6], x32[5], 0x0765);
-	publicKeyBytes[3] = __byte_perm(x32[5], x32[4], 0x0765);
-	publicKeyBytes[4] = __byte_perm(x32[4], x32[3], 0x0765);
-	publicKeyBytes[5] = __byte_perm(x32[3], x32[2], 0x0765);
-	publicKeyBytes[6] = __byte_perm(x32[2], x32[1], 0x0765);
-	publicKeyBytes[7] = __byte_perm(x32[1], x32[0], 0x0765);
-	publicKeyBytes[8] = __byte_perm(x32[0], 0x80, 0x0456);
-	publicKeyBytes[9] = 0;
-	publicKeyBytes[10] = 0;
-	publicKeyBytes[11] = 0;
-	publicKeyBytes[12] = 0;
-	publicKeyBytes[13] = 0;
-	publicKeyBytes[14] = 0;
-	publicKeyBytes[15] = 0x108;
-
-	_SHA256Initialize(s);
-	_SHA256Transform(s, publicKeyBytes);
-
-#pragma unroll 8
-	for (int i = 0; i < 8; i++)
-		s[i] = bswap32(s[i]);
-
-	*(uint64_t*)(s + 8) = 0x80ULL;
-	*(uint64_t*)(s + 10) = 0ULL;
-	*(uint64_t*)(s + 12) = 0ULL;
-	*(uint64_t*)(s + 14) = ripemd160_sizedesc_32;
+	// Compressed public key bytes: [prefix || x(32)]
+	wb[0] = 0x02 + isOdd;
+	wb[1] = (uint8_t)(x32[7] >> 24); wb[2] = (uint8_t)(x32[7] >> 16);
+	wb[3] = (uint8_t)(x32[7] >> 8);  wb[4] = (uint8_t)(x32[7]);
+	wb[5] = (uint8_t)(x32[6] >> 24); wb[6] = (uint8_t)(x32[6] >> 16);
+	wb[7] = (uint8_t)(x32[6] >> 8);  wb[8] = (uint8_t)(x32[6]);
+	wb[9] = (uint8_t)(x32[5] >> 24); wb[10] = (uint8_t)(x32[5] >> 16);
+	wb[11] = (uint8_t)(x32[5] >> 8); wb[12] = (uint8_t)(x32[5]);
+	wb[13] = (uint8_t)(x32[4] >> 24); wb[14] = (uint8_t)(x32[4] >> 16);
+	wb[15] = (uint8_t)(x32[4] >> 8); wb[16] = (uint8_t)(x32[4]);
+	wb[17] = (uint8_t)(x32[3] >> 24); wb[18] = (uint8_t)(x32[3] >> 16);
+	wb[19] = (uint8_t)(x32[3] >> 8); wb[20] = (uint8_t)(x32[3]);
+	wb[21] = (uint8_t)(x32[2] >> 24); wb[22] = (uint8_t)(x32[2] >> 16);
+	wb[23] = (uint8_t)(x32[2] >> 8); wb[24] = (uint8_t)(x32[2]);
+	wb[25] = (uint8_t)(x32[1] >> 24); wb[26] = (uint8_t)(x32[1] >> 16);
+	wb[27] = (uint8_t)(x32[1] >> 8); wb[28] = (uint8_t)(x32[1]);
+	wb[29] = (uint8_t)(x32[0] >> 24); wb[30] = (uint8_t)(x32[0] >> 16);
+	wb[31] = (uint8_t)(x32[0] >> 8); wb[32] = (uint8_t)(x32[0]);
+	wb[33] = 0x80;
+	*(uint64_t*)(wb + 56) = ripemd160_sizedesc_33;
 
 	_RIPEMD160Initialize((uint32_t*)hash);
-	_RIPEMD160Transform((uint32_t*)hash, s);
+	_RIPEMD160Transform((uint32_t*)hash, w);
 
 }
 
@@ -963,7 +957,7 @@ __device__ __noinline__ void _GetHash160P2SHComp(uint64_t* x, uint8_t isOdd, uin
 	uint32_t h[5];
 	uint32_t scriptBytes[16];
 	uint32_t s[16];
-	_GetHash160Comp(x, isOdd, (uint8_t*)h);
+	_GetRIPEMD160CompPubKey(x, isOdd, (uint8_t*)h);
 
 	// P2SH script script
 	scriptBytes[0] = __byte_perm(h[0], 0x14, 0x5401);
@@ -993,7 +987,7 @@ __device__ __noinline__ void _GetHash160P2SHComp(uint64_t* x, uint8_t isOdd, uin
 	*(uint64_t*)(s + 8) = 0x80ULL;
 	*(uint64_t*)(s + 10) = 0ULL;
 	*(uint64_t*)(s + 12) = 0ULL;
-	*(uint64_t*)(s + 14) = ripemd160_sizedesc_32;
+	*(uint64_t*)(s + 14) = ripemd160_sizedesc_20;
 
 	_RIPEMD160Initialize((uint32_t*)hash);
 	_RIPEMD160Transform((uint32_t*)hash, s);

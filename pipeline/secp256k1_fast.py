@@ -44,6 +44,14 @@ if HAS_COINCURVE:
     def hash160(data):
         return ripemd160(sha256(data))
 
+    def ripemd160_compressed_pubkey(pubkey_bytes):
+        """RIPEMD160 over a 33-byte compressed pubkey (0x02/0x03 + 32-byte X)."""
+        if len(pubkey_bytes) != 33:
+            raise ValueError(f"Expected 33-byte compressed pubkey, got {len(pubkey_bytes)} bytes")
+        if pubkey_bytes[0] not in (0x02, 0x03):
+            raise ValueError(f"Invalid compressed pubkey prefix: 0x{pubkey_bytes[0]:02x}")
+        return ripemd160(pubkey_bytes)
+
     # ============================================================
     # Key operations
     # ============================================================
